@@ -42,7 +42,7 @@ function MissionDetail({ mission }: { mission: Mission }) {
         <DialogDescription className="text-foreground/80">{mission.objective}</DialogDescription>
       </DialogHeader>
 
-      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+      <div className="apihack-scroll min-h-0 flex-1 overflow-y-auto pr-1">
         <div className="space-y-5 text-sm pb-1">
           <div>
             <TargetBadge type={mission.target.type} label={mission.target.label} />
@@ -69,10 +69,13 @@ function MissionDetail({ mission }: { mission: Mission }) {
 
           <section>
             <h4 className="mb-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">How to do it</h4>
-            <ol className="list-decimal space-y-2 pl-5 marker:font-mono marker:text-primary">
+            <ol className="space-y-2.5">
               {mission.steps.map((s, i) => (
-                <li key={i} className="leading-relaxed">
-                  {s}
+                <li key={i} className="flex items-start gap-3">
+                  <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border border-primary/30 bg-primary/10 font-mono text-xs font-semibold text-primary">
+                    {i + 1}
+                  </span>
+                  <span className="pt-0.5 leading-relaxed">{s}</span>
                 </li>
               ))}
             </ol>
@@ -139,7 +142,7 @@ function MissionDetail({ mission }: { mission: Mission }) {
       <button
         type="button"
         onClick={() => setDone(toggleComplete(mission.id))}
-        className="mt-2 inline-flex shrink-0 items-center justify-center gap-2 rounded-md border border-border px-4 py-2 font-mono text-sm transition-colors hover:bg-secondary/60 data-[done=true]:border-primary/50 data-[done=true]:bg-primary/10 data-[done=true]:text-primary"
+        className="mt-2 inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md border border-border px-4 py-2 font-mono text-sm transition-colors hover:bg-secondary/60 data-[done=true]:border-primary/50 data-[done=true]:bg-primary/10 data-[done=true]:text-primary"
         data-done={done}
       >
         {done ? <CheckCircle2 className="size-4" /> : <Circle className="size-4" />}

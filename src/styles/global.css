@@ -148,3 +148,28 @@
     @apply font-mono;
     }
 }
+
+/* Themed scrollbar for the mission detail body — thin, on-brand, with a
+   pointer cursor on the thumb (WebKit/Chromium; Firefox gets the thin
+   colored track/thumb via scrollbar-color but can't take a cursor override
+   on it — that's a browser limitation, not something CSS can fix). */
+.apihack-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.apihack-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+.apihack-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.apihack-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 999px;
+  border: 2px solid var(--card);
+  cursor: pointer;
+}
+.apihack-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: var(--primary);
+  cursor: pointer;
+}
