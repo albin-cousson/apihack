@@ -1,0 +1,38 @@
+---
+import Base from "../layouts/Base.astro";
+import LevelBoard from "../components/apihack/LevelBoard.tsx";
+import { getCollection } from "astro:content";
+
+const levelEntries = await getCollection("levels");
+const levels = levelEntries.map((e) => e.data).sort((a, b) => a.rank - b.rank);
+---
+
+<Base>
+  <div class="mx-auto max-w-6xl px-6 py-14 sm:px-8">
+    <header class="mb-10 flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <div class="mb-2 font-mono text-xs uppercase tracking-[0.3em] text-primary">apihack://ranked-training</div>
+        <h1 class="font-mono text-4xl font-bold tracking-tight sm:text-5xl">Apihack</h1>
+        <p class="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
+          A self-directed offensive security range. Every target here is
+          something you own — your repos, your machine, your phone, your
+          network. Work the ranks in order, from recon to a full red-team
+          capstone, and come out the other side able to break your own
+          systems <em>and</em> lock them back down.
+        </p>
+      </div>
+      <a
+        href="/legal"
+        class="inline-flex shrink-0 items-center gap-2 self-start rounded-lg border border-risk-medium/30 bg-risk-medium/10 px-4 py-2.5 font-mono text-xs text-risk-medium transition-colors hover:bg-risk-medium/15"
+      >
+        ⚠ Rules of engagement — read first
+      </a>
+    </header>
+
+    <LevelBoard client:load levels={levels} />
+
+    <footer class="mt-20 border-t border-border pt-6 text-center font-mono text-xs text-muted-foreground">
+      Progress is stored locally in your browser only. No accounts, no servers, no leaderboard.
+    </footer>
+  </div>
+</Base>

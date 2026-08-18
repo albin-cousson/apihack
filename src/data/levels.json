@@ -1,0 +1,654 @@
+[
+  {
+    "id": "bronze",
+    "rank": 1,
+    "title": "Recon & Digital Footprint",
+    "codename": "BRONZE",
+    "tagline": "Know what the world can already see about you.",
+    "summary": "Passive and semi-passive reconnaissance (OSINT) applied to your own footprint: GitHub history, domains you own, and metadata you've published. No exploitation yet — this rank is about seeing yourself the way an attacker would.",
+    "rankColor": "bronze",
+    "missions": [
+      {
+        "id": "bronze-github-shadow",
+        "title": "GitHub Shadow",
+        "objective": "Enumerate everything a stranger could learn about you from your own public GitHub account, including secrets that were committed and later 'deleted' but still live in git history.",
+        "difficulty": "intro",
+        "estMinutes": 60,
+        "target": { "type": "own-repo", "label": "Your public GitHub account and repos" },
+        "resourceAvailable": true,
+        "tools": ["gh CLI", "git", "gitleaks", "trufflehog"],
+        "steps": [
+          "List every public repo: `gh repo list <your-username> --limit 200`.",
+          "Clone each one locally, then run `gitleaks detect --source . -v` (or `trufflehog git file://.`) to catch secrets committed anywhere in history, even in commits you force-pushed over.",
+          "Check who you leaked to the commit log: `git log --all --format='%an <%ae>'` — personal email, machine hostname in commit signatures, etc.",
+          "Grep README/config files for internal hints: server names, staging URLs, TODO comments mentioning credentials or internal architecture.",
+          "Check `package.json`/lockfiles for any dependency pinned to a version with a known CVE (quick pass, doesn't need to be exhaustive).",
+          "Write a one-page recon report: what you found, how bad each finding is, and what you'd rotate/fix first."
+        ],
+        "legalBoundaries": [
+          "Everything here is your own public data — pure read-only recon, nothing to authorize beyond owning the account.",
+          "If you find a real secret (API key, token), treat it as live: rotate it immediately, don't just note it and move on."
+        ],
+        "risks": [
+          { "label": "You might find a genuinely valid, still-active credential", "severity": "medium", "mitigation": "Rotate/revoke it the moment you confirm it works — don't leave it live to 'test more later'." }
+        ],
+        "completionCriteria": [
+          "A written recon report listing every exposure found (or explicitly 'none found') with a severity per item.",
+          "Any live secret discovered has been rotated."
+        ],
+        "writeupPrompts": [
+          "What's the single most damaging thing a stranger could learn about you from your GitHub alone?",
+          "Which of these leaks would `gitleaks`/GitHub secret scanning have already caught automatically if enabled?"
+        ]
+      },
+      {
+        "id": "bronze-domain-ghost",
+        "title": "Domain Ghost",
+        "objective": "Passive DNS/WHOIS/certificate-transparency recon against a domain you personally own or control, to see your real external attack surface.",
+        "difficulty": "easy",
+        "estMinutes": 45,
+        "target": { "type": "own-repo", "label": "A domain/subdomain you own (or a GitHub Pages / Vercel URL you control)" },
+        "resourceAvailable": false,
+        "resourceNote": "Needs a domain you actually registered/control. If you don't have one yet, do a dry run against a GitHub Pages / Vercel preview URL you own instead — the DNS parts stay locked until you own a domain.",
+        "tools": ["whois", "dig", "crt.sh", "theHarvester", "Shodan (free tier)"],
+        "steps": [
+          "`whois yourdomain.com` — check registrar, expiry date, exposed registrant contact (privacy-guard on?).",
+          "`dig yourdomain.com ANY` / separate A, AAAA, MX, TXT, NS queries — map every record.",
+          "Check SPF/DMARC: `dig TXT yourdomain.com` and `dig TXT _dmarc.yourdomain.com` — missing/weak SPF+DMARC means anyone can spoof email 'from' your domain.",
+          "Subdomain enumeration via certificate transparency: browse crt.sh/?q=%.yourdomain.com — look for forgotten staging/dev subdomains still resolving.",
+          "If you have a public IP behind the domain, look it up on Shodan's free search to see what banners/ports are visible externally.",
+          "Write a hardening checklist from what you found (SPF/DMARC/DNSSEC, remove dead subdomains, enable registrar privacy)."
+        ],
+        "legalBoundaries": [
+          "Only domains you registered/administer — WHOIS/DNS/crt.sh lookups on domains you don't own are legal (public data) but out of scope for this mission's spirit; stay on your own assets.",
+          "Passive only: no active scanning of IPs/services you don't also own in this mission — save that for the Gold rank."
+        ],
+        "risks": [
+          { "label": "None — fully passive, read-only public-record lookups", "severity": "info", "mitigation": "n/a" }
+        ],
+        "completionCriteria": [
+          "A DNS/exposure report for the domain.",
+          "SPF/DMARC/DNSSEC hardening checklist, ideally actually applied at your registrar."
+        ],
+        "writeupPrompts": [
+          "Did you find a forgotten subdomain still pointing at something? What would happen if you hadn't found it first?"
+        ]
+      },
+      {
+        "id": "bronze-metadata-leak",
+        "title": "Metadata Leak Hunt",
+        "objective": "Find hidden metadata (GPS, author names, internal file paths, software versions) baked into files you've published publicly.",
+        "difficulty": "intro",
+        "estMinutes": 30,
+        "target": { "type": "own-repo", "label": "PDFs, images, or documents you've shared publicly" },
+        "resourceAvailable": true,
+        "tools": ["exiftool"],
+        "steps": [
+          "Gather 5-10 files you've actually published (project screenshots, PDFs, portfolio images).",
+          "Run `exiftool -r ./your-files/` and read every field, not just the obvious ones.",
+          "Flag anything sensitive: GPS coordinates on photos, your real name/username in PDF 'Author' metadata, internal file paths (`C:\\Users\\realname\\...`), software/version fingerprints.",
+          "Strip metadata from anything still live (`exiftool -all= file.jpg`) and re-publish if it's your call to do so."
+        ],
+        "legalBoundaries": [
+          "Only your own published files."
+        ],
+        "risks": [
+          { "label": "None — read-only local file inspection", "severity": "info", "mitigation": "n/a" }
+        ],
+        "completionCriteria": [
+          "A list of files with sensitive metadata found.",
+          "A personal habit/checklist: strip metadata before publishing, from now on."
+        ],
+        "writeupPrompts": [
+          "Which file surprised you the most?"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "silver",
+    "rank": 2,
+    "title": "Web Exploitation",
+    "codename": "SILVER",
+    "tagline": "Break the app before someone else does.",
+    "summary": "OWASP Top 10 practice: first against target-range, a small deliberately-vulnerable app bundled in this repo so this rank never blocks on missing resources, then — carefully — against a real dev/staging copy of one of your own projects.",
+    "rankColor": "silver",
+    "missions": [
+      {
+        "id": "silver-the-vault",
+        "title": "The Vault",
+        "objective": "Bypass authentication and exfiltrate data from target-range's login form using SQL injection, then patch the query yourself.",
+        "difficulty": "easy",
+        "estMinutes": 60,
+        "target": { "type": "bundled-app", "label": "target-range (bundled, local-only)" },
+        "resourceAvailable": true,
+        "tools": ["Burp Suite Community / OWASP ZAP", "sqlmap", "browser devtools"],
+        "steps": [
+          "Start the range locally: `bun run target-range` (never expose this port beyond localhost).",
+          "Open the login form, intercept the POST request in Burp/ZAP or just try it in the form directly.",
+          "Try a classic auth-bypass payload in the username field: `' OR '1'='1' -- `.",
+          "Confirm you're logged in as the first user in the table without knowing any password.",
+          "Point `sqlmap` at the vulnerable parameter (`sqlmap -u \"http://localhost:4243/login\" --data=\"username=x&password=y\" --batch`) to enumerate the schema and dump the users table.",
+          "Open `target-range/src/routes/login.ts`, find the string-concatenated query, and rewrite it using a parameterized query. Re-run your bypass — confirm it now fails."
+        ],
+        "legalBoundaries": [
+          "target-range is local-only and ships with a loud warning banner — never deploy it publicly, never point sqlmap at anything except your own localhost instance."
+        ],
+        "risks": [
+          { "label": "target-range's own SQLite file gets corrupted/dumped", "severity": "low", "mitigation": "It's a throwaway seed DB — delete and reseed with `bun run target-range:seed` any time." }
+        ],
+        "completionCriteria": [
+          "A working auth-bypass PoC (screenshot or terminal capture).",
+          "A patched `login.ts` using parameterized queries, verified to block the same payload."
+        ],
+        "writeupPrompts": [
+          "Why does a parameterized query fix this and string-escaping alone wouldn't be enough?"
+        ]
+      },
+      {
+        "id": "silver-reflected-ghosts",
+        "title": "Reflected Ghosts",
+        "objective": "Find and exploit reflected and stored XSS in target-range's comment/search feature.",
+        "difficulty": "easy",
+        "estMinutes": 45,
+        "target": { "type": "bundled-app", "label": "target-range (bundled, local-only)" },
+        "resourceAvailable": true,
+        "tools": ["browser devtools", "manual payloads"],
+        "steps": [
+          "On the search page, try `<script>alert(document.cookie)</script>` in the query string and see it reflected unescaped.",
+          "On the comments feature, post a stored payload like `<img src=x onerror=\"alert('stored')\">` and reload as a different session to confirm it fires for other viewers.",
+          "Demonstrate impact against your own browser only: read `document.cookie` or `localStorage` from the injected script (never exfiltrate to a real external endpoint — log it to the console instead).",
+          "Fix it: add output encoding on render and a restrictive Content-Security-Policy header in `target-range/src/middleware.ts`. Re-test — confirm the payload now renders as inert text."
+        ],
+        "legalBoundaries": [
+          "Local-only target. No real users or real cookies are ever at risk here."
+        ],
+        "risks": [
+          { "label": "None beyond the local app itself", "severity": "low", "mitigation": "n/a" }
+        ],
+        "completionCriteria": [
+          "Working reflected and stored PoCs.",
+          "A CSP header + output-encoding fix that blocks both."
+        ],
+        "writeupPrompts": [
+          "What's the difference in blast radius between the reflected and the stored version of this bug?"
+        ]
+      },
+      {
+        "id": "silver-broken-gate",
+        "title": "Broken Gate",
+        "objective": "Forge an admin JWT against target-range's intentionally weak token signing and reach an admin-only route.",
+        "difficulty": "medium",
+        "estMinutes": 45,
+        "target": { "type": "bundled-app", "label": "target-range (bundled, local-only)" },
+        "resourceAvailable": true,
+        "tools": ["jwt.io / jwt-cli", "curl"],
+        "steps": [
+          "Log in as a normal user, grab the JWT from the response/cookie.",
+          "Decode it (base64) and inspect the header/payload — note the `alg` and the `role` claim.",
+          "Try re-encoding the token with `alg: none` and no signature, or brute-force the (deliberately weak) HMAC secret with `hashcat -m 16500 <token> wordlist.txt`.",
+          "Set `role: admin` in the forged payload, hit `/api/admin/users` with it, and confirm access.",
+          "Fix `target-range/src/lib/jwt.ts`: use a long random secret from an env var, and explicitly allowlist the signing algorithm server-side instead of trusting the token's own `alg` header."
+        ],
+        "legalBoundaries": [
+          "Local-only target."
+        ],
+        "risks": [
+          { "label": "None beyond the local app itself", "severity": "low", "mitigation": "n/a" }
+        ],
+        "completionCriteria": [
+          "A forged admin token that works, then a fix that makes it stop working."
+        ],
+        "writeupPrompts": [
+          "Why is trusting the `alg` field inside the token itself a design flaw?"
+        ]
+      },
+      {
+        "id": "silver-your-own-backyard",
+        "title": "Your Own Backyard",
+        "objective": "Run the same OWASP Top 10 checklist you just practiced against a real project of yours, on a local/dev copy only.",
+        "difficulty": "hard",
+        "estMinutes": 180,
+        "target": { "type": "own-repo", "label": "One of your real projects (local dev copy, not production)" },
+        "resourceAvailable": false,
+        "resourceNote": "Depends on having a real project with a login form, API, or user input to test. If none of your current repos qualify yet, this stays optional/locked until you designate one — you mentioned you'll set that up.",
+        "tools": ["Burp Suite / OWASP ZAP", "gitleaks", "manual review"],
+        "steps": [
+          "Spin up a local/dev copy of the project — never test a live production deployment with real user data.",
+          "Walk the OWASP Top 10 checklist against it: injection, broken auth, sensitive data exposure, XXE, broken access control, security misconfig, XSS, insecure deserialization, vulnerable dependencies, insufficient logging.",
+          "For every finding, capture a PoC and rate its severity.",
+          "Fix at least the highest-severity finding and re-test."
+        ],
+        "legalBoundaries": [
+          "Local/dev copy only — a project you own end-to-end counts as self-authorized. If it ever has real users or real data, that data is off-limits: use seed/fake data.",
+          "Never point automated scanners (sqlmap, ZAP active scan) at a URL you don't control the hosting of."
+        ],
+        "risks": [
+          { "label": "Accidentally running a destructive test against a production database", "severity": "high", "mitigation": "Point every tool at a local `.env` with a throwaway DB before you start; double-check the target URL/port every single time." }
+        ],
+        "completionCriteria": [
+          "A short pentest-style report: finding, severity, PoC, fix — for your own real project."
+        ],
+        "writeupPrompts": [
+          "What did practicing on target-range first change about how you approached your own code?"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "gold",
+    "rank": 3,
+    "title": "Network & Infrastructure",
+    "codename": "GOLD",
+    "tagline": "Map the wires before you pull them.",
+    "summary": "Scanning and auditing your own LAN, Wi-Fi, and the traffic your own devices put on it. Everything here stays inside your own network boundary.",
+    "rankColor": "gold",
+    "missions": [
+      {
+        "id": "gold-port-sweep",
+        "title": "Port Sweep",
+        "objective": "Map every device and open service on your own LAN, and flag anything unnecessarily exposed.",
+        "difficulty": "easy",
+        "estMinutes": 45,
+        "target": { "type": "home-network", "label": "Your own home LAN / your own PC" },
+        "resourceAvailable": true,
+        "tools": ["nmap", "netstat / ss"],
+        "steps": [
+          "Find your LAN range (`ip a`, look at your subnet, e.g. 192.168.1.0/24).",
+          "`nmap -sV -sC 192.168.1.0/24` — service + version detection across the whole subnet.",
+          "For your own machine specifically: `ss -tulpn` (Linux/WSL) to see every listening process and port.",
+          "For each open service you don't recognize or need, decide: close it, firewall it, or document why it's intentional.",
+          "Write a network map + a 'ports closed' hardening list."
+        ],
+        "legalBoundaries": [
+          "Your own LAN only. Scanning a network you don't own or administer — a coffee shop's Wi-Fi, a friend's router, a work network without written authorization — is illegal in most jurisdictions even if you never exploit anything found. Don't do it, ever, outside an authorized engagement."
+        ],
+        "risks": [
+          { "label": "Aggressive scan flags/timing can trip IDS or destabilize flaky IoT devices", "severity": "low", "mitigation": "Use default timing (`-T3`) on a home network, avoid `-T5`/aggressive scripts against anything IoT." }
+        ],
+        "completionCriteria": [
+          "A network map of your LAN.",
+          "A hardening list of ports/services closed or firewalled."
+        ],
+        "writeupPrompts": [
+          "What was open that you genuinely didn't expect?"
+        ]
+      },
+      {
+        "id": "gold-wifi-microscope",
+        "title": "Wi-Fi Under the Microscope",
+        "objective": "Audit your own home Wi-Fi's security configuration end to end.",
+        "difficulty": "medium",
+        "estMinutes": 60,
+        "target": { "type": "home-network", "label": "Your own home router / access point" },
+        "resourceAvailable": false,
+        "resourceNote": "The passive checks (router admin panel review) always work. The active handshake-capture exercise needs a Wi-Fi adapter that supports monitor mode — flag this as a gear purchase if you want the full version.",
+        "tools": ["router admin panel", "aircrack-ng suite (optional, needs monitor-mode adapter)"],
+        "steps": [
+          "Log into your router's admin panel. Confirm encryption is WPA2/WPA3 (never WEP or open).",
+          "Check whether WPS is enabled — if so, disable it (WPS PINs are brute-forceable).",
+          "Confirm the router admin password isn't still the factory default.",
+          "If you have a monitor-mode-capable adapter: capture a WPA handshake from your own AP (`airodump-ng`) and test your own passphrase's strength offline with `aircrack-ng` against a wordlist — never against a network that isn't yours.",
+          "Write a hardening checklist: WPA3 if supported, WPS off, strong unique admin password, guest network isolated from IoT/main LAN."
+        ],
+        "legalBoundaries": [
+          "Your own access point only. Capturing handshakes or attempting to crack Wi-Fi passwords for a network you don't own/administer is illegal."
+        ],
+        "risks": [
+          { "label": "Deauth frames used during handshake capture will briefly drop your own devices off Wi-Fi", "severity": "low", "mitigation": "Do it during a maintenance window, not mid-videocall." }
+        ],
+        "completionCriteria": [
+          "A Wi-Fi hardening checklist, applied to your actual router."
+        ],
+        "writeupPrompts": [
+          "How long would your current Wi-Fi passphrase realistically take to crack offline, and would a longer passphrase meaningfully change that?"
+        ]
+      },
+      {
+        "id": "gold-man-in-your-own-middle",
+        "title": "Man in Your Own Middle",
+        "objective": "Intercept traffic from a device you own on your own LAN to see what your own apps leak in cleartext.",
+        "difficulty": "medium",
+        "estMinutes": 60,
+        "target": { "type": "home-network", "label": "A device you own (e.g. your own phone) on your own LAN" },
+        "resourceAvailable": true,
+        "tools": ["bettercap", "Wireshark"],
+        "steps": [
+          "On your PC, run `bettercap` on your LAN interface and ARP-spoof only your own second device (phone/tablet you own).",
+          "Capture the traffic with Wireshark while you use a few apps normally on that device.",
+          "Filter for HTTP (not HTTPS) traffic and look for any credentials, tokens, or personal data sent in cleartext.",
+          "Stop the spoof cleanly (`bettercap` restores ARP tables on exit) and confirm your device's connectivity is back to normal.",
+          "Write up any cleartext leaks found and recommend TLS/cert pinning fixes for anything you control the code of."
+        ],
+        "legalBoundaries": [
+          "Only intercept a device you personally own and have full authority over. Never a roommate's, family member's, or coworker's device on the same network without their explicit, informed consent — even 'just to test' is not authorization."
+        ],
+        "risks": [
+          { "label": "ARP spoofing can disrupt your own network traffic or, if the spoof isn't cleaned up, leave routing broken", "severity": "medium", "mitigation": "Run it during a maintenance window; always let bettercap restore ARP tables before stopping; keep a router reboot as a fallback." }
+        ],
+        "completionCriteria": [
+          "A traffic report noting any cleartext credentials/tokens found (or confirming everything was encrypted)."
+        ],
+        "writeupPrompts": [
+          "Did any app you trusted turn out to be sending anything in cleartext?"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "platinum",
+    "rank": 4,
+    "title": "System & Host Exploitation",
+    "codename": "PLATINUM",
+    "tagline": "Own the box — safely, in a box.",
+    "summary": "Privilege escalation and password auditing, always inside disposable VMs with a clean snapshot — never on your daily-driver OS.",
+    "rankColor": "platinum",
+    "missions": [
+      {
+        "id": "platinum-snapshot-first",
+        "title": "Snapshot First",
+        "objective": "Build a disposable Linux VM lab you can break without any risk to your real machine.",
+        "difficulty": "intro",
+        "estMinutes": 45,
+        "target": { "type": "vm-lab", "label": "A local VM (VirtualBox/VMware/UTM) or container" },
+        "resourceAvailable": false,
+        "resourceNote": "Needs a hypervisor installed (VirtualBox, VMware, or Docker as a lighter alternative). Flagged as a prerequisite setup step for the rest of this rank.",
+        "tools": ["VirtualBox / VMware / UTM", "a Linux ISO (e.g. Debian/Ubuntu minimal)"],
+        "steps": [
+          "Install a hypervisor and create a minimal Linux VM with no network bridging beyond NAT (isolated from your LAN).",
+          "Take a clean snapshot the moment install finishes, before touching anything.",
+          "Rehearse the restore-from-snapshot flow once now, so it's muscle memory before you actually need it."
+        ],
+        "legalBoundaries": [
+          "Everything from here on happens strictly inside this VM."
+        ],
+        "risks": [
+          { "label": "None yet — this is just lab setup", "severity": "info", "mitigation": "n/a" }
+        ],
+        "completionCriteria": [
+          "A running VM with a verified, restorable clean snapshot."
+        ],
+        "writeupPrompts": []
+      },
+      {
+        "id": "platinum-privesc-playground",
+        "title": "PrivEsc Playground",
+        "objective": "Deliberately misconfigure your own VM, then escalate from a low-privilege user to root using standard enumeration techniques.",
+        "difficulty": "medium",
+        "estMinutes": 90,
+        "target": { "type": "vm-lab", "label": "The VM from Snapshot First" },
+        "resourceAvailable": false,
+        "resourceNote": "Depends on Snapshot First being done first.",
+        "tools": ["linpeas.sh", "GTFOBins", "sudo"],
+        "steps": [
+          "Create a non-root user, then deliberately introduce one misconfiguration: a SUID binary that shouldn't be SUID, a `sudo NOPASSWD` entry for a dangerous binary, or a cron job writable by your low-priv user.",
+          "Log in as the low-priv user and run `linpeas.sh` to enumerate the box the way an attacker would.",
+          "Use the flagged misconfiguration (cross-reference GTFOBins for the specific binary) to escalate to root.",
+          "Write up the exact escalation path, then fix the misconfiguration and confirm the same path no longer works.",
+          "Restore the snapshot when done so the VM is clean for the next mission."
+        ],
+        "legalBoundaries": [
+          "Your own disposable VM only."
+        ],
+        "risks": [
+          { "label": "None — isolated, disposable VM", "severity": "low", "mitigation": "Snapshot restore is your safety net." }
+        ],
+        "completionCriteria": [
+          "A root shell obtained via the introduced misconfiguration.",
+          "A written escalation path, plus confirmation the fix blocks it."
+        ],
+        "writeupPrompts": [
+          "Which real-world misconfiguration does the one you introduced most resemble?"
+        ]
+      },
+      {
+        "id": "platinum-crack-your-own-hashes",
+        "title": "Crack Your Own Hashes",
+        "objective": "Measure how fast weak vs. strong passwords actually fall to offline cracking.",
+        "difficulty": "medium",
+        "estMinutes": 60,
+        "target": { "type": "vm-lab", "label": "The VM from Snapshot First" },
+        "resourceAvailable": false,
+        "resourceNote": "Depends on Snapshot First being done first.",
+        "tools": ["hashcat or John the Ripper", "rockyou.txt (or a similar public wordlist)"],
+        "steps": [
+          "Create a handful of test accounts in the VM with a range of passwords: a common weak one, an 8-char 'complex-looking' one, a long random passphrase.",
+          "Export the shadow hashes (`sudo cat /etc/shadow`, your own VM only) for those test accounts.",
+          "Run `hashcat`/`John` against them with a public wordlist + rule set, and time how long each falls (or doesn't, within a reasonable time budget).",
+          "Build a comparison table: password → crack time.",
+          "Restore the snapshot afterward."
+        ],
+        "legalBoundaries": [
+          "Only crack hashes you generated yourself, in your own VM, for this exercise. Never run a cracker against a real leaked hash dump, even 'just to see' — downloading and cracking breach data you have no authorization over is its own legal problem."
+        ],
+        "risks": [
+          { "label": "GPU-bound cracking can run your machine hot/loud for a while", "severity": "low", "mitigation": "Set a time budget per hash rather than letting it run indefinitely." }
+        ],
+        "completionCriteria": [
+          "A crack-time comparison table across at least 3 password strengths."
+        ],
+        "writeupPrompts": [
+          "What's the actual takeaway for your own real passwords after seeing these numbers?"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "diamond",
+    "rank": 5,
+    "title": "Mobile & Application Security",
+    "codename": "DIAMOND",
+    "tagline": "Your phone in your pocket, your target on your bench.",
+    "summary": "Security review of your own phone and the apps installed on it — permissions, decompilation, and traffic inspection.",
+    "rankColor": "diamond",
+    "missions": [
+      {
+        "id": "diamond-permission-audit",
+        "title": "Permission Audit",
+        "objective": "Review every app on your own phone's permissions and flag over-permissioned ones.",
+        "difficulty": "intro",
+        "estMinutes": 30,
+        "target": { "type": "own-phone", "label": "Your own phone (Android or iOS)" },
+        "resourceAvailable": true,
+        "tools": ["phone's built-in privacy/permission dashboard"],
+        "steps": [
+          "Android: Settings → Privacy → Permission manager, review by permission type (location, mic, contacts, etc.).",
+          "iOS: Settings → Privacy & Security, same idea per category.",
+          "For each sensitive permission, ask: does this app actually need this to function? Revoke or downgrade to 'while using' anything that doesn't.",
+          "Build an audit table: app, permission, justified? action taken."
+        ],
+        "legalBoundaries": [
+          "Your own device only."
+        ],
+        "risks": [
+          { "label": "Revoking a permission can break a feature you rely on", "severity": "low", "mitigation": "Test the app after revoking; re-grant if something breaks that you actually need." }
+        ],
+        "completionCriteria": [
+          "An audit table covering every installed app with a sensitive permission."
+        ],
+        "writeupPrompts": [
+          "Which app had the most permissions it clearly didn't need?"
+        ]
+      },
+      {
+        "id": "diamond-apk-autopsy",
+        "title": "APK Autopsy",
+        "objective": "Decompile one of your own installed Android apps and look for hardcoded secrets, insecure storage, or exported components.",
+        "difficulty": "hard",
+        "estMinutes": 90,
+        "target": { "type": "own-phone", "label": "An APK you built, or an app you installed on your own Android device" },
+        "resourceAvailable": false,
+        "resourceNote": "Android-specific. If you're on iOS-only, the equivalent (class-dump / Frida against an IPA) needs a jailbroken device and is a much higher barrier — treat it as an optional advanced substitute, flagged as a resource gap for now.",
+        "tools": ["jadx", "apktool"],
+        "steps": [
+          "Pull the APK (`adb shell pm path <package>` then `adb pull`), or export it from a project you built.",
+          "Decompile with `jadx-gui` and read through for hardcoded API keys, secrets, or internal URLs baked into strings.",
+          "Check `AndroidManifest.xml` for exported Activities/Services/Receivers that shouldn't be exported, and any `android:debuggable=\"true\"` left on in a release build.",
+          "Check where the app stores data (`/data/data/<package>/`, on a rooted device or emulator) for anything sensitive stored unencrypted.",
+          "Write up findings and fixes (move secrets server-side, un-export components that don't need it, encrypt local storage)."
+        ],
+        "legalBoundaries": [
+          "Only decompile apps you built yourself, or that you're licensed/entitled to reverse-engineer for personal security research on your own installed copy — check the app's ToS if it's third-party; when in doubt, do this against your own app."
+        ],
+        "risks": [
+          { "label": "None if scoped to your own app/device", "severity": "low", "mitigation": "n/a" }
+        ],
+        "completionCriteria": [
+          "A findings list from the decompiled APK, plus fix recommendations."
+        ],
+        "writeupPrompts": [
+          "Did you find anything in the decompiled code you didn't expect to still be there?"
+        ]
+      },
+      {
+        "id": "diamond-proxy-the-phone",
+        "title": "Proxy the Phone",
+        "objective": "Route your own phone's traffic through an intercepting proxy to see what your installed apps actually send.",
+        "difficulty": "medium",
+        "estMinutes": 60,
+        "target": { "type": "own-phone", "label": "Your own phone + PC on the same LAN" },
+        "resourceAvailable": true,
+        "tools": ["mitmproxy or Burp Suite", "manual CA cert install on the phone"],
+        "steps": [
+          "Start `mitmproxy` (or Burp's proxy) on your PC, note its LAN IP and port.",
+          "On your phone, set the Wi-Fi manual proxy to that IP:port, then install and trust the proxy's CA certificate (needed to see HTTPS traffic in plaintext).",
+          "Use a handful of your installed apps normally while capturing.",
+          "Look for cleartext credentials, unexpected third-party trackers/SDKs, or tokens sent somewhere surprising.",
+          "Remove the proxy config and CA trust when done."
+        ],
+        "legalBoundaries": [
+          "Your own device and your own traffic only."
+        ],
+        "risks": [
+          { "label": "Some apps use certificate pinning and will simply stop working while the proxy is active — expected, not a bug", "severity": "low", "mitigation": "Remove proxy settings to restore normal function." }
+        ],
+        "completionCriteria": [
+          "A traffic report: any cleartext creds found? any unexpected third-party destinations?"
+        ],
+        "writeupPrompts": [
+          "Which app sent traffic to a destination you didn't expect?"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "master",
+    "rank": 6,
+    "title": "Red Team Capstone — Assume Breach, Then Defend",
+    "codename": "MASTER",
+    "tagline": "Chain it, break it, then lock it down like a pro.",
+    "summary": "The capstone: a multi-service lab, a full chained attack path from foothold to objective, a real pentest report — and then the actual mastery test, flipping to Blue Team and proving every hole is patched.",
+    "rankColor": "master",
+    "missions": [
+      {
+        "id": "master-build-the-range",
+        "title": "Build the Range",
+        "objective": "Design and stand up a small multi-service Docker Compose lab (web frontend + internal API + database) with a deliberate, layered vulnerability chain.",
+        "difficulty": "insane",
+        "estMinutes": 240,
+        "target": { "type": "self-build", "label": "A Docker Compose stack you design yourself" },
+        "resourceAvailable": false,
+        "resourceNote": "Not bundled in Apihack v1 — this is intentionally left to you to build, reusing the vulnerability patterns from Silver (web) and Platinum (privesc). This mission ships as a brief + grading checklist; the target stack itself is on you.",
+        "tools": ["Docker / Docker Compose", "patterns from Silver + Platinum"],
+        "steps": [
+          "Design 3 layers: an internet-facing web app with one real bug (from Silver's playbook), an internal-only admin API that's only reachable after the first foothold, and a DB/host layer that needs a privesc-style bug (from Platinum's playbook) to fully compromise.",
+          "Build it in Docker Compose so it's disposable and resettable (`docker compose down -v && docker compose up` = clean slate).",
+          "Do NOT expose this stack beyond localhost/your own lab network."
+        ],
+        "legalBoundaries": [
+          "Entirely your own build, entirely local."
+        ],
+        "risks": [
+          { "label": "None if kept local-only", "severity": "low", "mitigation": "Never publish the compose stack's ports beyond 127.0.0.1." }
+        ],
+        "completionCriteria": [
+          "A running 3-layer Docker Compose lab with a documented intended attack path."
+        ],
+        "writeupPrompts": []
+      },
+      {
+        "id": "master-full-chain",
+        "title": "Full Chain",
+        "objective": "Execute the complete attack path end-to-end, from an assumed low-privilege foothold to the capstone objective, documenting every step.",
+        "difficulty": "insane",
+        "estMinutes": 180,
+        "target": { "type": "self-build", "label": "The lab from Build the Range" },
+        "resourceAvailable": false,
+        "resourceNote": "Depends on Build the Range being complete.",
+        "tools": ["Whatever the lab's vulnerabilities call for — Burp/ZAP, linpeas, GTFOBins, etc."],
+        "steps": [
+          "Start from the assumed foothold (e.g. the web app's public bug).",
+          "Pivot to the internal API using what the foothold exposes.",
+          "Escalate privileges on the host/DB layer using the privesc bug you built in.",
+          "Screenshot or log every step as you go — this becomes the evidence trail for the report."
+        ],
+        "legalBoundaries": [
+          "Your own lab only."
+        ],
+        "risks": [
+          { "label": "None — disposable local lab", "severity": "low", "mitigation": "n/a" }
+        ],
+        "completionCriteria": [
+          "A complete, evidenced attack chain from foothold to objective."
+        ],
+        "writeupPrompts": []
+      },
+      {
+        "id": "master-the-report",
+        "title": "The Report",
+        "objective": "Write an actual professional-grade penetration test report for the Full Chain engagement.",
+        "difficulty": "hard",
+        "estMinutes": 120,
+        "target": { "type": "self-build", "label": "Documentation of the Full Chain engagement" },
+        "resourceAvailable": false,
+        "resourceNote": "Depends on Full Chain being complete.",
+        "tools": ["a text editor / Markdown"],
+        "steps": [
+          "Write an executive summary (non-technical, for a hypothetical stakeholder): what was tested, what was found, overall risk.",
+          "List findings by severity, each with a CVSS-style score, a reproduction PoC, and a concrete remediation.",
+          "Add a 'timeline' section mirroring the Full Chain steps.",
+          "This is the actual deliverable real pentesters submit to clients — hold it to that bar."
+        ],
+        "legalBoundaries": [
+          "n/a — documentation exercise."
+        ],
+        "risks": [
+          { "label": "None", "severity": "info", "mitigation": "n/a" }
+        ],
+        "completionCriteria": [
+          "A complete written report: exec summary, findings by severity, PoCs, remediations, timeline."
+        ],
+        "writeupPrompts": []
+      },
+      {
+        "id": "master-blue-team-flip",
+        "title": "Blue Team Flip",
+        "objective": "Patch every vulnerability you exploited in the lab, then re-run Full Chain and prove it now fails at every step.",
+        "difficulty": "insane",
+        "estMinutes": 120,
+        "target": { "type": "self-build", "label": "The lab from Build the Range, now being hardened" },
+        "resourceAvailable": false,
+        "resourceNote": "Depends on The Report being complete.",
+        "tools": ["Same stack as Build the Range"],
+        "steps": [
+          "Go through your own report's remediation list and apply every fix to the lab.",
+          "Re-run the exact Full Chain steps against the patched lab.",
+          "Confirm each step now fails, and document why (what specifically blocks it now).",
+          "This is the actual completion criterion for Master rank: you're not done until you can no longer break your own system."
+        ],
+        "legalBoundaries": [
+          "Your own lab only."
+        ],
+        "risks": [
+          { "label": "None", "severity": "info", "mitigation": "n/a" }
+        ],
+        "completionCriteria": [
+          "Every step of Full Chain confirmed blocked against the patched lab, with a short 'why this now fails' note per step."
+        ],
+        "writeupPrompts": [
+          "Looking back across all six ranks, which single fix habit will you carry into every future project by default?"
+        ]
+      }
+    ]
+  }
+]

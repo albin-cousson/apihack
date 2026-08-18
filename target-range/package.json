@@ -1,0 +1,10 @@
+{
+  "name": "target-range",
+  "private": true,
+  "type": "module",
+  "description": "Intentionally vulnerable practice server for the Apihack Silver rank. LOCAL PRACTICE ONLY — never deploy this publicly.",
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "seed": "bun run src/seed.ts"
+  }
+}

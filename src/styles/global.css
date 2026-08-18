@@ -1,0 +1,150 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/jetbrains-mono";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Apihack design system — "hacker terminal, premium build".
+ * Dark-first (single theme, no light mode — this is a personal ops console).
+ * Base: deep navy-black, not pure #000 (avoids OLED smear / harsh contrast).
+ * Accent: matrix green (primary action / "authorized" / low risk).
+ * Secondary accent: cyan (info / links / focus).
+ * Risk scale: green -> amber -> orange -> red, plus a neutral "info" cyan.
+ * Rank scale: bronze -> silver -> gold -> platinum -> diamond -> master.
+ */
+@theme inline {
+    --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', monospace;
+    --font-heading: var(--font-sans);
+
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+
+    /* Risk / severity scale — used on mission risk badges */
+    --color-risk-info: var(--risk-info);
+    --color-risk-low: var(--risk-low);
+    --color-risk-medium: var(--risk-medium);
+    --color-risk-high: var(--risk-high);
+    --color-risk-critical: var(--risk-critical);
+
+    /* Rank scale — used on level badges / progress rail */
+    --color-rank-bronze: var(--rank-bronze);
+    --color-rank-silver: var(--rank-silver);
+    --color-rank-gold: var(--rank-gold);
+    --color-rank-platinum: var(--rank-platinum);
+    --color-rank-diamond: var(--rank-diamond);
+    --color-rank-master: var(--rank-master);
+}
+
+:root {
+    color-scheme: dark;
+
+    --background: #0a0e16;
+    --foreground: #e7edf5;
+    --card: #101623;
+    --card-foreground: #e7edf5;
+    --popover: #0d1220;
+    --popover-foreground: #e7edf5;
+
+    --primary: #22c55e;
+    --primary-foreground: #04170c;
+    --secondary: #1a2333;
+    --secondary-foreground: #cbd5e1;
+    --muted: #131a28;
+    --muted-foreground: #8593aa;
+    --accent: #38bdf8;
+    --accent-foreground: #051822;
+    --destructive: #ef4444;
+    --border: rgba(148, 163, 184, 0.14);
+    --input: rgba(148, 163, 184, 0.18);
+    --ring: #22c55e;
+
+    --chart-1: #22c55e;
+    --chart-2: #38bdf8;
+    --chart-3: #eab308;
+    --chart-4: #f97316;
+    --chart-5: #ef4444;
+
+    --radius: 0.75rem;
+
+    --sidebar: #0d1220;
+    --sidebar-foreground: #e7edf5;
+    --sidebar-primary: #22c55e;
+    --sidebar-primary-foreground: #04170c;
+    --sidebar-accent: #131a28;
+    --sidebar-accent-foreground: #e7edf5;
+    --sidebar-border: rgba(148, 163, 184, 0.14);
+    --sidebar-ring: #22c55e;
+
+    --risk-info: #38bdf8;
+    --risk-low: #22c55e;
+    --risk-medium: #eab308;
+    --risk-high: #f97316;
+    --risk-critical: #ef4444;
+
+    --rank-bronze: #cd7f32;
+    --rank-silver: #adb8c4;
+    --rank-gold: #f2c14e;
+    --rank-platinum: #7fd6c6;
+    --rank-diamond: #67e8f9;
+    --rank-master: #f2b84b;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  body {
+    @apply bg-background text-foreground;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(34, 197, 94, 0.08), transparent),
+      radial-gradient(ellipse 60% 40% at 100% 0%, rgba(56, 189, 248, 0.06), transparent);
+    background-attachment: fixed;
+    }
+  html {
+    @apply font-sans;
+    }
+  code, kbd, pre, samp {
+    @apply font-mono;
+    }
+}

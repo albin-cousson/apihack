@@ -1,0 +1,63 @@
+---
+import Base from "../layouts/Base.astro";
+
+const rules = [
+  {
+    title: "Only your own assets",
+    body: "Every mission in Apihack targets something you own or fully control: your own GitHub account, your own PC/VMs, your own phone, your own home network, or a practice app bundled in this repo. Never a third party's system, account, or data — not a friend's, not an employer's, not a public service you merely use.",
+  },
+  {
+    title: "No exceptions without written authorization",
+    body: "If you ever want to test something you don't own outright, you need explicit written authorization first — a bug bounty program's published scope (e.g. via HackerOne, Intigriti, Yes We Hack), a signed pentest engagement letter, or an employer's explicit sign-off. Curiosity is not authorization.",
+  },
+  {
+    title: "Isolate anything destructive",
+    body: "Privilege escalation, password cracking, and exploit-chaining happen inside disposable VMs/containers with a clean snapshot you can always roll back to — never on your daily-driver OS, and never against a device with data you can't afford to lose.",
+  },
+  {
+    title: "No mass, automated, or self-spreading tooling",
+    body: "No DoS/flooding, no wipers/ransomware, no worm-style payloads that could spread beyond the exact box you're testing — even inside an isolated lab. Keep every technique scoped to the one asset you're studying.",
+  },
+  {
+    title: "The goal isn't 'not getting caught' — it's not having anything to get caught for",
+    body: "Every target here is yours, so there's no one to evade. What actually matters is clean methodology: document what you did, why, and how you fixed it. If you ever cross into a system you don't own without authorization, that's not an advanced technique — in France it's unauthorized access/maintenance in an automated data system (Code pénal, art. 323-1 to 323-7): up to 3 years' imprisonment and €100,000 in fines, more if data is altered or it targets state systems. Other countries have equivalent laws (CFAA in the US, Computer Misuse Act in the UK, etc.).",
+  },
+  {
+    title: "Rank is self-graded",
+    body: "There's no leaderboard and no server tracking you. Progress lives in your browser's local storage. A rank is 'done' when you can honestly point to the completion criteria on every mission card — including, at Master rank, the write-ups and the Blue Team fix.",
+  },
+];
+---
+
+<Base title="Apihack — Rules of Engagement" description="The legal and ethical boundaries every Apihack mission operates inside.">
+  <div class="mx-auto max-w-3xl px-6 py-14 sm:px-8">
+    <a href="/" class="mb-8 inline-block font-mono text-xs text-muted-foreground hover:text-foreground">← back to ranks</a>
+    <div class="mb-2 font-mono text-xs uppercase tracking-[0.3em] text-risk-medium">apihack://rules-of-engagement</div>
+    <h1 class="mb-6 font-mono text-3xl font-bold tracking-tight sm:text-4xl">Rules of Engagement</h1>
+    <p class="mb-10 leading-relaxed text-foreground/80">
+      This isn't red tape — it's the difference between "practicing offensive
+      security" and "committing a crime." Read this once before your first
+      mission, then keep it in mind every time a mission card's legal
+      boundaries section feels like it's stating the obvious. It usually is —
+      until it isn't.
+    </p>
+
+    <div class="space-y-6">
+      {rules.map((r, i) => (
+        <div class="rounded-xl border border-border bg-card/50 p-5">
+          <div class="mb-2 flex items-center gap-3">
+            <span class="font-mono text-xs text-primary">{String(i + 1).padStart(2, "0")}</span>
+            <h2 class="font-mono text-base font-semibold">{r.title}</h2>
+          </div>
+          <p class="text-sm leading-relaxed text-foreground/80">{r.body}</p>
+        </div>
+      ))}
+    </div>
+
+    <p class="mt-10 text-xs leading-relaxed text-muted-foreground">
+      This page is a working-practitioner's summary, not legal advice. If
+      you're ever unsure whether a target is really "yours" to test — it
+      isn't, until you can point to explicit written authorization.
+    </p>
+  </div>
+</Base>
