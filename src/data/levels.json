@@ -18,7 +18,7 @@
         "resourceAvailable": true,
         "tools": ["gh CLI", "git", "gitleaks", "trufflehog"],
         "steps": [
-          "Install what you're missing: `gh` (github.com/cli/cli — often preinstalled), `gitleaks` (`sudo apt install gitleaks` on Debian/Ubuntu/WSL, `brew install gitleaks` on macOS, or a release from github.com/gitleaks/gitleaks), `trufflehog` (`brew install trufflehog` or the install script at github.com/trufflesecurity/trufflehog). Then `gh auth login` if you haven't already.",
+          "Install what you're missing: `gh` (github.com/cli/cli — often preinstalled), `gitleaks` (`sudo apt install gitleaks` on Debian/Ubuntu/WSL, `brew install gitleaks` on macOS, or a release from github.com/gitleaks/gitleaks), `trufflehog` (on Linux/WSL: `curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin`; on macOS: `brew install trufflehog`). You only strictly need one of gitleaks/trufflehog for this mission — trufflehog additionally tries to verify whether a found secret is still live. Then `gh auth login` if you haven't already.",
           "List every public repo: `gh repo list <your-username> --limit 200`.",
           "Clone each one locally, then run `gitleaks detect --source . -v` (or `trufflehog git file://.`) to catch secrets committed anywhere in history, even in commits you force-pushed over.",
           "Check who you leaked to the commit log: `git log --all --format='%an <%ae>'` — personal email, machine hostname in commit signatures, etc.",
