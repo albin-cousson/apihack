@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { CheckCircle2, Circle } from "lucide-react";
 import type { Level, Mission } from "./types";
 import {
@@ -32,7 +31,7 @@ function MissionDetail({ mission }: { mission: Mission }) {
   }, [mission.id]);
 
   return (
-    <DialogContent className="flex max-h-[85vh] max-w-4xl flex-col overflow-hidden border-border bg-card">
+    <DialogContent className="flex max-h-[85vh] sm:max-w-4xl flex-col overflow-hidden border-border bg-card">
       <DialogHeader className="shrink-0">
         <div className="flex flex-wrap items-center gap-2">
           <DifficultyBadge difficulty={mission.difficulty} />
@@ -43,8 +42,8 @@ function MissionDetail({ mission }: { mission: Mission }) {
         <DialogDescription className="text-foreground/80">{mission.objective}</DialogDescription>
       </DialogHeader>
 
-      <ScrollArea className="min-h-0 flex-1 pr-4">
-        <div className="space-y-5 text-sm">
+      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+        <div className="space-y-5 text-sm pb-1">
           <div>
             <TargetBadge type={mission.target.type} label={mission.target.label} />
             {!mission.resourceAvailable && mission.resourceNote && (
@@ -135,7 +134,7 @@ function MissionDetail({ mission }: { mission: Mission }) {
             </section>
           )}
         </div>
-      </ScrollArea>
+      </div>
 
       <button
         type="button"
