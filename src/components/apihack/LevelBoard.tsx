@@ -32,8 +32,8 @@ function MissionDetail({ mission }: { mission: Mission }) {
   }, [mission.id]);
 
   return (
-    <DialogContent className="max-w-2xl bg-card border-border">
-      <DialogHeader>
+    <DialogContent className="flex max-h-[85vh] max-w-4xl flex-col overflow-hidden border-border bg-card">
+      <DialogHeader className="shrink-0">
         <div className="flex flex-wrap items-center gap-2">
           <DifficultyBadge difficulty={mission.difficulty} />
           <EstTime minutes={mission.estMinutes} />
@@ -43,7 +43,7 @@ function MissionDetail({ mission }: { mission: Mission }) {
         <DialogDescription className="text-foreground/80">{mission.objective}</DialogDescription>
       </DialogHeader>
 
-      <ScrollArea className="max-h-[60vh] pr-4">
+      <ScrollArea className="min-h-0 flex-1 pr-4">
         <div className="space-y-5 text-sm">
           <div>
             <TargetBadge type={mission.target.type} label={mission.target.label} />
@@ -140,7 +140,7 @@ function MissionDetail({ mission }: { mission: Mission }) {
       <button
         type="button"
         onClick={() => setDone(toggleComplete(mission.id))}
-        className="mt-2 inline-flex items-center justify-center gap-2 rounded-md border border-border px-4 py-2 font-mono text-sm transition-colors hover:bg-secondary/60 data-[done=true]:border-primary/50 data-[done=true]:bg-primary/10 data-[done=true]:text-primary"
+        className="mt-2 inline-flex shrink-0 items-center justify-center gap-2 rounded-md border border-border px-4 py-2 font-mono text-sm transition-colors hover:bg-secondary/60 data-[done=true]:border-primary/50 data-[done=true]:bg-primary/10 data-[done=true]:text-primary"
         data-done={done}
       >
         {done ? <CheckCircle2 className="size-4" /> : <Circle className="size-4" />}
