@@ -102,6 +102,68 @@
         "writeupPrompts": [
           "Which file surprised you the most?"
         ]
+      },
+      {
+        "id": "bronze-secret-scraper",
+        "title": "Secret Scraper — Écrire son propre détecteur de secrets dans l'historique Git",
+        "objective": "Au lieu d'utiliser seulement gitleaks, écrire un script (Node.js ou Python) qui analyse le log Git (`git log -p`) et recherche des patterns de secrets (clés AWS, tokens, mots de passe, etc.) en utilisant des regex et des règles simples. Comprendre ce que gitleaks fait sous le capot.",
+        "difficulty": "intro",
+        "estMinutes": 90,
+        "target": { "type": "own-repo", "label": "Your public GitHub account and repos" },
+        "resourceAvailable": true,
+        "offlineCapable": true,
+        "tools": ["git", "Node.js or Python", "regex"],
+        "steps": [
+          "Clone tes repos publics localement (déjà fait si tu as fait bronze-github-shadow avant).",
+          "Écris un script (Node.js ou Python) qui lit `git log -p` et recherche des patterns de secrets : AWS keys (AKIA...), tokens, mots de passe, clés API, etc. en utilisant des regex.",
+          "Comprends comment gitleaks détecte les secrets — compare ton approche avec gitleaks.",
+          "Ajoute des règles personnalisées pour les patterns spécifiques à tes projets.",
+          "Génère un rapport structuré : quels secrets trouvés, où, quelle gravité."
+        ],
+        "legalBoundaries": [
+          "Only scan your own repositories."
+        ],
+        "risks": [
+          { "label": "None — read-only local file inspection", "severity": "info", "mitigation": "n/a" }
+        ],
+        "completionCriteria": [
+          "A working script that detects secrets in git history.",
+          "Comparison report: your approach vs gitleaks."
+        ],
+        "writeupPrompts": [
+          "What patterns did you miss compared to gitleaks?",
+          "How would you extend your script to detect new types of secrets?"
+        ]
+      },
+      {
+        "id": "bronze-metadata-parser",
+        "title": "Metadata Parser — Parser exiftool pour générer un rapport structuré",
+        "objective": "Dans le cadre de bronze-metadata-leak, écrire un script qui parse la sortie `exiftool -j` (JSON) et génère un rapport structuré des métadonnées sensibles présentes dans les fichiers publiés.",
+        "difficulty": "easy",
+        "estMinutes": 45,
+        "target": { "type": "own-repo", "label": "PDFs, images, or documents you've shared publicly" },
+        "resourceAvailable": true,
+        "offlineCapable": true,
+        "tools": ["exiftool", "Python or Node.js (script de parsing)"],
+        "steps": [
+          "Exécute `exiftool -j` sur tes fichiers publiés pour obtenir la sortie JSON.",
+          "Écris un script (Python ou Node.js) qui parse cette sortie JSON et identifie les champs sensibles : GPS, auteur, chemins de fichiers locaux, versions de logiciels.",
+          "Génère un rapport HTML ou Markdown avec les métadonnées trouvées et leur niveau de risque.",
+          "Compare ton rapport avec une lecture manuelle de exiftool — les deux donnent-ils les mêmes résultats ?"
+        ],
+        "legalBoundaries": [
+          "Only your own published files."
+        ],
+        "risks": [
+          { "label": "None — read-only local file inspection", "severity": "info", "mitigation": "n/a" }
+        ],
+        "completionCriteria": [
+          "A working script that parses exiftool JSON output and generates a structured report.",
+          "A comparison between manual and automated analysis."
+        ],
+        "writeupPrompts": [
+          "What metadata surprised you the most in your own files?"
+        ]
       }
     ]
   },
@@ -232,6 +294,72 @@
         "writeupPrompts": [
           "What did practicing on target-range first change about how you approached your own code?"
         ]
+      },
+      {
+        "id": "silver-code-your-own-vuln-app",
+        "title": "Coder son propre app vulnérable — Ajouter une nouvelle vulnérabilité à target-range",
+        "objective": "Prendre target-range (le serveur Bun local vulnérable) et y ajouter une nouvelle route vulnérable que tu codes toi-même. Par exemple : une SSRF (le serveur fait une requête vers une URL fournie par l'utilisateur sans validation), ou une injection NoSQL, ou une désérialisation dangereuse. Puis exploite cette vulnérabilité que tu as codée (comprendre les deux côtés : écrire le bug, l'exploiter, la patcher).",
+        "difficulty": "medium",
+        "estMinutes": 180,
+        "target": { "type": "bundled-app", "label": "target-range (bundled, local-only) — extended by you" },
+        "resourceAvailable": true,
+        "offlineCapable": true,
+        "tools": ["Node.js (Bun — la stack de target-range)", "curl"],
+        "steps": [
+          "Lis le code de target-range pour comprendre la structure existante (routes, middleware, db).",
+          "Ajoute une nouvelle route vulnérable au serveur (par exemple POST /fetch avec une SSRF : le serveur récupère une URL donnée et retourne le contenu sans validation).",
+          "Teste la nouvelle vulnérabilité : exploite-la manuellement avec curl.",
+          "Analyse : pourquoi cette vulnérabilité fonctionne-t-elle ? Quel est le mécanisme sous-jacent ?",
+          "Patch la vulnérabilité (validation de l'URL, allowlisting, etc.) et confirme que l'exploit ne fonctionne plus.",
+          "Note : ces étapes t'apprennent à coder une vulnérabilité, à l'exploiter, et à la corriger — les trois côtés de la sécurité offensive et défensive."
+        ],
+        "legalBoundaries": [
+          "Local-only target. Only add vulnerabilities to target-range, never to a real service."
+        ],
+        "risks": [
+          { "label": "None — local app, throwaway code", "severity": "low", "mitigation": "n/a" }
+        ],
+        "completionCriteria": [
+          "A new vulnerable route added to target-range and documented.",
+          "Working exploit for that vulnerability.",
+          "Patched version that blocks the exploit."
+        ],
+        "writeupPrompts": [
+          "What did you learn about the vulnerability by coding it yourself?",
+          "How does this vulnerability compare to the existing ones in target-range?"
+        ]
+      },
+      {
+        "id": "silver-script-your-exploit",
+        "title": "Automatiser l'exploitation — Écrire ton propre script d'attaque contre target-range",
+        "objective": "Écrire un script (Node.js ou Python) qui, sans utiliser sqlmap, lance la requête SQLi avec différents payloads, parse la réponse, et détecte si l'injection a réussi (basé sur le contenu de la réponse, le code HTTP, etc.). Ce script devient ton propre 'mini sqlmap'.",
+        "difficulty": "medium",
+        "estMinutes": 120,
+        "target": { "type": "bundled-app", "label": "target-range (bundled, local-only)" },
+        "resourceAvailable": true,
+        "offlineCapable": true,
+        "tools": ["Node.js (ou Python)", "curl"],
+        "steps": [
+          "Écris un script qui envoie des requêtes POST à /login avec différents payloads SQLi (dans le champ username).",
+          "Parse la réponse HTTP pour déterminer si l'injection a réussi (code 200 + contenu spécifique vs code 401).",
+          "Ajoute une fonctionnalité d'énumération : le script devine le nombre de colonnes, le nom de la table, etc. (comme le ferait sqlmap, mais manuellement).",
+          "Compare ton script avec sqlmap : lequel est plus rapide ? Lequel est plus précis ?",
+          "Optionnel : ajoute une fonction de détection de XSS dans le même script (réutilise le payload de silver-reflected-ghosts)."
+        ],
+        "legalBoundaries": [
+          "Local-only target. No automated tools against real services."
+        ],
+        "risks": [
+          { "label": "None — local app only", "severity": "low", "mitigation": "n/a" }
+        ],
+        "completionCriteria": [
+          "A working exploit script that automates SQLi detection.",
+          "Comparison report: your script vs sqlmap."
+        ],
+        "writeupPrompts": [
+          "What did you learn about automated exploitation by writing your own script?",
+          "Would you use your script in a real engagement? Why or why not?"
+        ]
       }
     ]
   },
@@ -332,6 +460,39 @@
         "writeupPrompts": [
           "Did any app you trusted turn out to be sending anything in cleartext?"
         ]
+      },
+      {
+        "id": "gold-write-port-scanner",
+        "title": "Coder son propre scanner de ports — Comprendre le TCP à bas niveau",
+        "objective": "Au lieu d'utiliser seulement nmap, écrire un scanner de ports TCP basique en Python (ou autre langage) qui utilise `socket.connect()` pour tester une plage de ports sur une cible. Comprendre ce qu'il se passe au niveau réseau (SYN, ACK, échec de connexion). Comparer avec nmap : rapidité, précision, discrétion.",
+        "difficulty": "easy",
+        "estMinutes": 60,
+        "target": { "type": "home-network", "label": "Your own LAN (VM or home LAN)" },
+        "resourceAvailable": true,
+        "offlineCapable": true,
+        "offlineNote": "Faisable sur un réseau local (VM communicantes ou home LAN). Pas besoin d'internet.",
+        "tools": ["Python (socket)", "nmap (pour comparaison)"],
+        "steps": [
+          "Écris un scanner de ports simple qui teste chaque port d'une plage (ex: 1-1024) sur une cible et indique si le port est ouvert (connexion acceptée) ou fermé (connexion refusée).",
+          "Teste ton scanner sur une cible locale (une VM, ou ton propre PC).",
+          "Compare les résultats avec nmap : quels ports manquent dans ton scanner ? Pourquoi ?",
+          "Améliore ton scanner : ajouter un délai entre les scans, une détection de service basique (envoyer un probe et lire la réponse).",
+          "Note: cet exercice t'apprend le protocole TCP et la programmation réseau."
+        ],
+        "legalBoundaries": [
+          "Only scan your own network or devices you own."
+        ],
+        "risks": [
+          { "label": "Scanning may trigger IDS on some networks", "severity": "low", "mitigation": "Scan only your own devices." }
+        ],
+        "completionCriteria": [
+          "A working port scanner in Python.",
+          "Comparison report: your scanner vs nmap."
+        ],
+        "writeupPrompts": [
+          "What did you learn about TCP by writing your own scanner?",
+          "When would you use your scanner vs nmap in a real engagement?"
+        ]
       }
     ]
   },
@@ -430,6 +591,38 @@
         "writeupPrompts": [
           "What's the actual takeaway for your own real passwords after seeing these numbers?"
         ]
+      },
+      {
+        "id": "platinum-password-entropy-coder",
+        "title": "Calculer l'entropie d'un mot de passe — Coder la théorie de la force des mots de passe",
+        "objective": "Dans le cadre de platinum-crack-your-own-hashes, écrire un script qui calcule l'entropie d'un mot de passe (en Python) et prédit s'il est 'cassable rapidement' selon l'entropie, avant même de lancer hashcat. Comprendre la théorie de la force des mots de passe de façon programmée.",
+        "difficulty": "easy",
+        "estMinutes": 45,
+        "target": { "type": "vm-lab", "label": "The VM from Snapshot First" },
+        "resourceAvailable": true,
+        "offlineCapable": true,
+        "tools": ["Python (script d'entropie)"],
+        "steps": [
+          "Écris un script Python qui calcule l'entropie d'un mot de passe (en bits) selon la formule : E = L * log2(N) où L est la longueur et N est le nombre de caractères possibles (selon le charset utilisé).",
+          "Génère des comptes de test avec des mots de passe de différents niveaux (faible, complexe mais court, long random passphrase).",
+          "Calcule l'entropie pour chaque et prédit le temps de cassage (estimé).",
+          "Compare avec les résultats réels de hashcat — tes prédictions sont-elles correctes ?",
+          "Note: cet exercice t'apprend la cryptographie appliquée et la programmation de sécurité."
+        ],
+        "legalBoundaries": [
+          "Only test passwords you create for this exercise."
+        ],
+        "risks": [
+          { "label": "None — local VM only", "severity": "low", "mitigation": "n/a" }
+        ],
+        "completionCriteria": [
+          "A working entropy calculator script.",
+          "Comparison between predicted and actual crack times."
+        ],
+        "writeupPrompts": [
+          "What's the most important takeaway for your own passwords after seeing these numbers?",
+          "How would you extend your entropy calculator to detect common patterns (dictionary words, repeated chars, etc.)?"
+        ]
       }
     ]
   },
@@ -527,6 +720,40 @@
         ],
         "writeupPrompts": [
           "Which app sent traffic to a destination you didn't expect?"
+        ]
+      },
+      {
+        "id": "diamond-modify-apk-and-recompile",
+        "title": "Modifier et recompiler un APK — Le cycle complet de modification mobile",
+        "objective": "Prendre un APK que tu as analysé dans diamond-apk-autopsy, le modifier (changer un texte, désactiver une permission dans le Manifest, modifier une constante), le recompiler avec apktool, le re-signer, et l'installer sur ton téléphone. Apprendre le cycle complet : décompilation → modification → recompilation → signature → installation.",
+        "difficulty": "medium",
+        "estMinutes": 90,
+        "target": { "type": "own-phone", "label": "An APK you built, or an app you installed on your own Android device" },
+        "resourceAvailable": true,
+        "offlineCapable": true,
+        "tools": ["apktool", "jadx", "apksigner / uber-apk-signer", "adb"],
+        "steps": [
+          "Prends un APK que tu as déjà analysé (dans diamond-apk-autopsy).",
+          "Décompile-le avec apktool pour obtenir les ressources et le code.",
+          "Modifie quelque chose : un texte dans `res/values/strings.xml`, une permission dans `AndroidManifest.xml`, une constante dans le code.",
+          "Recompile avec apktool.",
+          "Re-signe l'APK avec uber-apk-signer ou apksigner.",
+          "Installe l'APK modifié sur ton téléphone avec adb et vérifie que les modifications sont appliquées.",
+          "Note: cet exercice t'apprend le cycle complet de modification d'APK, une compétence clé en sécurité mobile."
+        ],
+        "legalBoundaries": [
+          "Only modify apps you built yourself, or that you're licensed to reverse-engineer for personal security research on your own installed copy."
+        ],
+        "risks": [
+          { "label": "None if scoped to your own app/device", "severity": "low", "mitigation": "n/a" }
+        ],
+        "completionCriteria": [
+          "A modified APK installed and working on your device.",
+          "Documentation of the modifications made and the recompilation process."
+        ],
+        "writeupPrompts": [
+          "What was the hardest part of the recompilation process?",
+          "How would you detect that an APK has been modified (integrity verification)?"
         ]
       }
     ]
@@ -647,6 +874,39 @@
         ],
         "writeupPrompts": [
           "Looking back across all six ranks, which single fix habit will you carry into every future project by default?"
+        ]
+      },
+      {
+        "id": "master-write-exploit-chain-script",
+        "title": "Orchestrer la chaîne d'attaque avec un script — Coder un outil de pentest minimal",
+        "objective": "Une fois le lab Master construit, écrire un script (Python avec requests, ou Node.js) qui orchestre les étapes de l'attaque de manière partiellement automatisée : exécuter la première vulnérabilité, parser le résultat, utiliser ce résultat pour la prochaine étape, etc. Ce script devient ton propre outil de pentest minimal.",
+        "difficulty": "medium",
+        "estMinutes": 180,
+        "target": { "type": "self-build", "label": "The lab from Build the Range" },
+        "resourceAvailable": true,
+        "offlineCapable": true,
+        "tools": ["Python (requests) ou Node.js", "curl"],
+        "steps": [
+          "Écris un script qui commence par exploiter la première vulnérabilité du lab (ex: SQLi sur le web app).",
+          "Parse le résultat pour extraire les informations nécessaires à la prochaine étape (ex: credentials, tokens, IDs).",
+          "Utilise ces informations pour attaquer la prochaine couche (ex: API interne).",
+          "Continue jusqu'à l'objectif final, en documentant chaque étape dans le script.",
+          "Ajoute des logs et des outputs formatés pour que le script soit lisible et réutilisable.",
+          "Optionnel: ajoute une fonction de 'dry run' qui simule l'attaque sans l'exécuter réellement."
+        ],
+        "legalBoundaries": [
+          "Only run against your own lab."
+        ],
+        "risks": [
+          { "label": "None — local lab only", "severity": "low", "mitigation": "n/a" }
+        ],
+        "completionCriteria": [
+          "A working exploit chain script that automates the attack path.",
+          "Documentation of the script architecture and how to extend it."
+        ],
+        "writeupPrompts": [
+          "What did you learn about attack orchestration by writing this script?",
+          "How would you extend this script to support multiple targets or multiple attack paths?"
         ]
       }
     ]
