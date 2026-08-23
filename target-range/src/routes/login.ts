@@ -12,9 +12,22 @@ import { db } from "../db";
 import { sign } from "../lib/jwt";
 
 export async function handleLogin(req: Request): Promise<Response> {
-  const body = await req.json().catch(() => null);
-  const username = body?.username ?? "";
-  const password = body?.password ?? "";
+  // Accept both JSON and form-urlencoded — sqlmap defaults to form-urlencoded
+  // so the mission command `sqlmap --data="username=x&password=y"` must work.
+  const ct = req.headers.get("content-type") ?? "";
+  let body: Record<string, string> = {};
+  if (ct.startsWith("application/json")) {
+    const parsed = await req.json().catch(() => null);
+    if (parsed) body = parsed as Record<string, string>;
+  } else {
+    const text = await req.text();
+    for (const pair of text.split("&")) {
+      const [k, v] = pair.split("=", 2);
+      if (k) body[k] = v ? decodeURIComponent(v) : "";
+    }
+  }
+  const username = body.username ?? "";
+  const password = body.password ?? "";
 
   // VULNERABLE: raw string-concatenated SQL. Do not copy this pattern.
   const query = `SELECT id, username, role FROM users WHERE username = '${username}' AND password = '${password}'`;
